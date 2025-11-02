@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Ignoră configurările locale care conțin secrete
+**\src\main\resources\application-local.properties
