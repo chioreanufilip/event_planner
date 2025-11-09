@@ -27,7 +27,11 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    public record LoginRequest(String email, String password) {}
+    public record UserDto(Long id, String email, String name,String role) {}
+    public record AuthResponse(String token,UserDto user) {}
     // Mută rutele de register aici
+
     @PostMapping("/register/participant")
     public ResponseEntity<Participant> registerParticipant(@RequestBody Participant user) {
         Participant savedUser = userService.createUser(user);
@@ -43,11 +47,11 @@ public class AuthController {
     // Endpoint-ul de LOGIN
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
-        // 1. Spring Security verifică email-ul și parola
+        // 1. Spring verifies the password
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
+                        request.email(),
+                        request.password()
                 )
         );
 
@@ -56,8 +60,9 @@ public class AuthController {
 
         // 3. Generăm un token
         String token = jwtService.generateToken(user);
+        UserDto userDto = new UserDto(user.getIdUser().longValue(),user.getEmail(),user.getName(),(user instanceof Organizer) ? "organizer" : "participant");
 
         // 4. Returnăm token-ul
-        return ResponseEntity.ok(new AuthResponse(token));
+        return ResponseEntity.ok(new AuthResponse(token,userDto));
     }
 }

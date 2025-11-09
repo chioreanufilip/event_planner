@@ -40,6 +40,8 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                     .permitAll() // este permis pentru toată lumea
                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
+                    .requestMatchers("/api/media/event/**")
+                    .permitAll()
 
                     // Aici spunem că TOATE celelalte rute
                     .anyRequest()
