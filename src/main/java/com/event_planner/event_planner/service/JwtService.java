@@ -43,7 +43,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername()) // Aici se pune email-ul
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24*60*7)) // Setează să expire într-o zi
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24*60*7))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
