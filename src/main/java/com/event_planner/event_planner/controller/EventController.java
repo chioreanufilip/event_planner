@@ -78,7 +78,7 @@ public class EventController {
         }
     }
 
-    @GetMapping("/{my-events}")
+    @GetMapping("/my-events")
     public ResponseEntity<?> getAllEvents(Authentication authentication) {
         try{
             return new ResponseEntity<>(eventService.getAllEventsbyOrganizer(authentication), HttpStatus.OK);

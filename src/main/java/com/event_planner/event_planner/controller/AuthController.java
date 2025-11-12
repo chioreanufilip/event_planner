@@ -1,7 +1,7 @@
 package com.event_planner.event_planner.controller;
 
-import com.event_planner.event_planner.controller.AuthResponse;
-import com.event_planner.event_planner.controller.LoginRequest;
+//import com.event_planner.event_planner.controller.AuthResponse;
+//import com.event_planner.event_planner.controller.LoginRequest;
 import com.event_planner.event_planner.model.Organizer;
 import com.event_planner.event_planner.model.Participant;
 import com.event_planner.event_planner.model.User;
