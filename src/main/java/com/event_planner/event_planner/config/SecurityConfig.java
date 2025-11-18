@@ -47,6 +47,13 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                     .anyRequest()
                     .authenticated() // Necesită autentificare
             )
+            //Invitation
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/invitations/**").permitAll()
+                    .anyRequest().authenticated()
+            )
+
+
             // Spunem lui Spring să NU folosească Sesiuni (cookies)
             // Vom folosi token-uri, deci e "stateless"
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
