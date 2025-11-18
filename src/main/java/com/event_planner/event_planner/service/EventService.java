@@ -20,13 +20,26 @@ public class EventService {
 
     public Event createEvent(Event event,Authentication authentication ) throws AccessDeniedException {
         String username = authentication.getName();
-        User organizer =  repoUser.findByEmail(username).orElseThrow(()-> new RuntimeException("Organizer not found"));
-        if (organizer instanceof Organizer) {
-            event.setHostOrganizer((Organizer) organizer);
-            return eventRepo.save(event);
+        
+        System.out.println("=== EVENT CREATION DEBUG ===");
+        System.out.println("Username from auth: " + username);
+        
+        // Try to find as Organizer directly
+        Optional<Organizer> organizerOpt = repoUser.findOrganizerByEmail(username);
+        
+        System.out.println("Organizer found: " + organizerOpt.isPresent());
+        
+        if (organizerOpt.isPresent()) {
+            Organizer organizer = organizerOpt.get();
+            System.out.println("Organizer ID: " + organizer.getIdUser());
+            event.setHostOrganizer(organizer);
+            Event saved = eventRepo.save(event);
+            System.out.println("Event saved with ID: " + saved.getId());
+            return saved;
         }
         else  {
-            throw new AccessDeniedException("You are not an organizer");
+            System.out.println("ERROR: No organizer found with email: " + username);
+            throw new AccessDeniedException("User is not an organizer or not found: " + username);
         }
     }
 

@@ -32,33 +32,32 @@ public class SecurityConfig {
 @Bean
 public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-            .cors(withDefaults()) // <-- ADAUGĂ ACEASTĂ LINIE
-            .csrf(csrf -> csrf.disable()) // Dezactivăm CSRF (nu e necesar pt API-uri stateless)
+            // CORS configuration for cross-origin requests (React frontend)
+            .cors(withDefaults())
+            
+            // DISABLE CSRF - Required for REST APIs with JWT authentication
+            // CSRF is only needed for cookie-based authentication, not JWT
+            .csrf(csrf -> csrf.disable())
+            
+            // Authorization rules
             .authorizeHttpRequests(auth -> auth
-                    // Aici punem rutele publice
-                    .requestMatchers("/api/auth/**") // Tot ce e în /api/auth/
-                    .permitAll() // este permis pentru toată lumea
-                    .requestMatchers(HttpMethod.OPTIONS, "/**")
-                    .permitAll()
-                    .requestMatchers("/api/media/event/**")
-                    .permitAll()
-
-                    // Aici spunem că TOATE celelalte rute
-                    .anyRequest()
-                    .authenticated() // Necesită autentificare
-            )
-            //Invitation
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/invitations/**").permitAll()
+                    // Public endpoints - No authentication required
+                    .requestMatchers("/api/auth/**").permitAll()          // Login, register
+                    .requestMatchers("/api/invitations/*/accept").permitAll()   // Accept invitations
+                    .requestMatchers("/api/invitations/*/decline").permitAll()  // Decline invitations
+                    .requestMatchers("/api/media/event/**").permitAll()   // Public event media
+                    .requestMatchers("/health/**").permitAll()            // Health checks
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
+                    
+                    // Protected endpoints - Authentication required
                     .anyRequest().authenticated()
             )
-
-
-            // Spunem lui Spring să NU folosească Sesiuni (cookies)
-            // Vom folosi token-uri, deci e "stateless"
+            
+            // Stateless session - No server-side sessions, only JWT tokens
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authenticationProvider(authenticationProvider) // Folosim provider-ul din ApplicationConfig
-            // Adăugăm filtrul nostru JWT *înainte* de filtrul standard de login
+            
+            // Add custom authentication provider and JWT filter
+            .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();

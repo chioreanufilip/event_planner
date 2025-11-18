@@ -50,7 +50,7 @@ public class InvitationService {
     }
 
     @Transactional
-    public String sendInvitation(Integer eventId, String email) {
+    public String sendInvitation(Integer eventId, String email, String participantName) {
         Event event = eventRepo.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found: " + eventId));
 
@@ -61,17 +61,18 @@ public class InvitationService {
         Participant participant = participantRepo.findByEmail(email).orElse(null);
 
         Instant expiresAt = Instant.now().plus(ttlHours, ChronoUnit.HOURS);
-        Invitation inv = invitationRepo.save(Invitation.pending(event, participant, email, expiresAt));
+        Invitation inv = invitationRepo.save(Invitation.pending(event, participant, email, participantName, expiresAt));
 
         String link = inviteBaseUrl + "?token=" + inv.getToken();
 
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT);
         String when = event.getDate() != null ? df.format(event.getDate()) : "TBA";
         String where = event.getLocation() != null ? event.getLocation() : "TBA";
+        String greeting = inv.getParticipantName() != null ? inv.getParticipantName() : "there";
 
         String subject = "You're invited: " + event.getName();
         String body = """
-                Hello,
+                Hello %s,
 
                 You are invited to: %s
                 When: %s
@@ -82,11 +83,53 @@ public class InvitationService {
 
                 This link expires on: %s
                 """.formatted(
-                event.getName(), when, where, link, expiresAt.toString()
+                greeting, event.getName(), when, where, link, expiresAt.toString()
         );
 
         emailService.sendInvite(email, subject, body);
         return link;
+    }
+
+    /**
+     * Bulk send invitations from Excel import
+     * @param eventId The event ID
+     * @param participants List of maps containing "name" and "email" keys
+     * @return List of successfully sent email addresses
+     */
+    @Transactional
+    public java.util.List<String> sendBulkInvitations(Integer eventId, java.util.List<java.util.Map<String, String>> participants) {
+        Event event = eventRepo.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found: " + eventId));
+
+        java.util.List<String> sentInvitations = new java.util.ArrayList<>();
+        java.util.List<String> errors = new java.util.ArrayList<>();
+
+        for (java.util.Map<String, String> p : participants) {
+            String email = p.get("email");
+            String name = p.get("name");
+
+            try {
+                // Check if already invited
+                if (invitationRepo.existsByEvent_IdAndEmailAndStatus(eventId, email, InvitationStatus.PENDING)) {
+                    errors.add("Already invited: " + email);
+                    continue;
+                }
+
+                // Send invitation with name
+                sendInvitation(eventId, email, name);
+                sentInvitations.add(email);
+
+            } catch (Exception e) {
+                errors.add("Failed to invite " + email + ": " + e.getMessage());
+            }
+        }
+
+        // Log errors if any
+        if (!errors.isEmpty()) {
+            System.err.println("Bulk invitation errors: " + String.join(", ", errors));
+        }
+
+        return sentInvitations;
     }
 
     @Transactional
@@ -113,7 +156,8 @@ public class InvitationService {
                 String tempPassword = generateTempPassword(12);
                 Participant p = new Participant();
                 p.setEmail(inv.getEmail());
-                p.setName(inv.getEmail()); // adjust if you collect real name later
+                // Use participantName from invitation instead of email
+                p.setName(inv.getParticipantName() != null ? inv.getParticipantName() : "Guest");
                 p.setPassword(passwordEncoder.encode(tempPassword));
                 participantRepo.save(p);
                 inv.setParticipant(p);
@@ -121,14 +165,15 @@ public class InvitationService {
                 // Notify user of their new account + temp password
                 String subject = "Your Event Planner account is ready";
                 String body = """
-                        Hello,
+                        Hello %s,
 
-                        We've created a Participant account for your invitation email: %s
+                        We've created a Participant account for you.
+                        Email: %s
                         Temporary password: %s
 
                         Please log in and change your password:
                         %s
-                        """.formatted(inv.getEmail(), tempPassword, loginUrl);
+                        """.formatted(p.getName(), inv.getEmail(), tempPassword, loginUrl);
                 emailService.sendInvite(inv.getEmail(), subject, body);
             });
         }

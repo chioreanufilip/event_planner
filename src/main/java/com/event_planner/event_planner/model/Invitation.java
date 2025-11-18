@@ -33,6 +33,9 @@ public class Invitation {
     @Column(nullable = false)
     private String email;
 
+    @Column(name = "participant_name")
+    private String participantName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InvitationStatus status = InvitationStatus.PENDING;
@@ -45,12 +48,32 @@ public class Invitation {
 
     private Instant respondedAt;
 
-    public static Invitation pending(Event event, Participant participant, String email, Instant expiresAt) {
+    /**
+     * Create a pending invitation with participant name support
+     * 
+     * @param event The event to invite to
+     * @param participant Existing participant (can be null for new people)
+     * @param email Email address to send invitation to
+     * @param participantName Name of the person (can be null)
+     * @param expiresAt When the invitation expires
+     * @return A new pending invitation
+     */
+    public static Invitation pending(Event event, Participant participant, String email, String participantName, Instant expiresAt) {
         Invitation i = new Invitation();
         i.setToken(UUID.randomUUID().toString().replace("-", ""));
         i.setEvent(event);
         i.setParticipant(participant);
         i.setEmail(email);
+        
+        // Priority: provided name > participant's name > "Guest"
+        if (participantName != null && !participantName.trim().isEmpty()) {
+            i.setParticipantName(participantName);
+        } else if (participant != null && participant.getName() != null) {
+            i.setParticipantName(participant.getName());
+        } else {
+            i.setParticipantName("Guest");
+        }
+        
         i.setExpiresAt(expiresAt);
         i.setStatus(InvitationStatus.PENDING);
         return i;

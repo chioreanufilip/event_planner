@@ -17,11 +17,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
-@RequiredArgsConstructor // Injectează automat dependențele finale
+@RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService; // Acesta e bean-ul din ApplicationConfig
+    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(
@@ -29,51 +29,43 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-
-        // 1. Ia header-ul "Authorization"
-        final String authHeader = request.getHeader("Authorization");
-
-        // 2. Verifică dacă e gol sau dacă nu începe cu "Bearer "
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response); // Lasă cererea să meargă mai departe
+        
+        // FIRST: Check if this is a public endpoint that should skip JWT validation
+        String path = request.getServletPath();
+        if (path.startsWith("/api/auth/") || path.startsWith("/health/")) {
+            // Skip JWT processing for public endpoints
+            filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. Extrage token-ul (fără "Bearer ")
-        final String jwt = authHeader.substring(7);
+        // SECOND: Extract JWT token from Authorization header
+        final String authHeader = request.getHeader("Authorization");
+        
+        // If no Authorization header or doesn't start with "Bearer ", skip
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        // 4. Extrage email-ul din token
+        // THIRD: Extract and validate JWT token
+        final String jwt = authHeader.substring(7); // Remove "Bearer " prefix
         final String userEmail = jwtService.extractUsername(jwt);
 
-        // 5. Verifică dacă email-ul e valid ȘI dacă user-ul nu e deja autentificat
+        // If token is valid and user is not already authenticated
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            // 6. Încarcă detaliile user-ului din baza de date
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            // 7. Verifică dacă token-ul e valid
             if (jwtService.isTokenValid(jwt, userDetails)) {
-                // 8. Creează un obiect de autentificare
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
-                        null, // Nu avem nevoie de parolă aici
+                        null,
                         userDetails.getAuthorities()
                 );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                // 9. Setează utilizatorul ca "autentificat"
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
-        // 10. Predă controlul următorului filtru din lanț
         filterChain.doFilter(request, response);
     }
-
-//    @Override
-//    protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, jakarta.servlet.FilterChain filterChain) throws jakarta.servlet.ServletException, IOException {
-//
-//    }
 }

@@ -19,9 +19,8 @@ import java.util.List;
 @DiscriminatorColumn(name = "dtype")
 public abstract class User implements UserDetails {
     @Id
-    @Column(name="idUser")
-//    private Long idUser;
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="id_user")
     private Integer idUser;
 
     @Column(name = "name")

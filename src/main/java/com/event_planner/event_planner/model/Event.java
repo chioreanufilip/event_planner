@@ -19,6 +19,8 @@ public class Event {
 
     @Column(name = "name")
     private String name;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
     @Column(name = "date")
     private Date date;
     @Column(name = "location")
@@ -26,7 +28,7 @@ public class Event {
     @Column(name = "budget")
     private BigDecimal budget;
     @Column(name = "size")
-    private Integer size;
+    private Integer size = 0;
     @ManyToOne
     @JoinColumn(name="host_user_id",nullable = false)
     private Organizer hostOrganizer;
